@@ -575,6 +575,9 @@ video {
 .h-full {
   height: 100%;
 }
+.max-h-48 {
+  max-height: 12rem;
+}
 .max-h-\[90vh\] {
   max-height: 90vh;
 }
@@ -632,6 +635,11 @@ video {
 .gap-6 {
   gap: 1.5rem;
 }
+.space-y-3 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(0.75rem * var(--tw-space-y-reverse));
+}
 .space-y-4 > :not([hidden]) ~ :not([hidden]) {
   --tw-space-y-reverse: 0;
   margin-top: calc(1rem * calc(1 - var(--tw-space-y-reverse)));
@@ -652,6 +660,9 @@ video {
 .rounded-full {
   border-radius: 9999px;
 }
+.rounded-lg {
+  border-radius: 0.5rem;
+}
 .rounded-md {
   border-radius: 0.375rem;
 }
@@ -665,6 +676,9 @@ video {
 .border-b {
   border-bottom-width: 1px;
 }
+.border-t {
+  border-top-width: 1px;
+}
 .border-\[\#7a6b58\] {
   --tw-border-opacity: 1;
   border-color: rgb(122 107 88 / var(--tw-border-opacity, 1));
@@ -676,6 +690,9 @@ video {
 .border-\[\#D4BC8E\] {
   --tw-border-opacity: 1;
   border-color: rgb(212 188 142 / var(--tw-border-opacity, 1));
+}
+.border-\[\#D4BC8E\]\/25 {
+  border-color: rgb(212 188 142 / 0.25);
 }
 .border-\[\#D4BC8E\]\/35 {
   border-color: rgb(212 188 142 / 0.35);
@@ -703,6 +720,9 @@ video {
 .bg-\[\#E8A317\] {
   --tw-bg-opacity: 1;
   background-color: rgb(232 163 23 / var(--tw-bg-opacity, 1));
+}
+.bg-black\/20 {
+  background-color: rgb(0 0 0 / 0.2);
 }
 .bg-gradient-to-b {
   background-image: linear-gradient(to bottom, var(--tw-gradient-stops));
@@ -756,6 +776,10 @@ video {
   padding-top: 3rem;
   padding-bottom: 3rem;
 }
+.py-2 {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
 .py-2\.5 {
   padding-top: 0.625rem;
   padding-bottom: 0.625rem;
@@ -766,6 +790,12 @@ video {
 }
 .pb-5 {
   padding-bottom: 1.25rem;
+}
+.pr-1 {
+  padding-right: 0.25rem;
+}
+.pt-6 {
+  padding-top: 1.5rem;
 }
 .text-center {
   text-align: center;
@@ -783,6 +813,9 @@ video {
 }
 .text-\[10px\] {
   font-size: 10px;
+}
+.text-\[11px\] {
+  font-size: 11px;
 }
 .text-lg {
   font-size: 1.125rem;
@@ -811,6 +844,9 @@ video {
 .tabular-nums {
   --tw-numeric-spacing: tabular-nums;
   font-variant-numeric: var(--tw-ordinal) var(--tw-slashed-zero) var(--tw-numeric-figure) var(--tw-numeric-spacing) var(--tw-numeric-fraction);
+}
+.tracking-\[0\.25em\] {
+  letter-spacing: 0.25em;
 }
 .tracking-\[0\.28em\] {
   letter-spacing: 0.28em;
@@ -845,6 +881,9 @@ video {
 }
 .text-\[\#D4BC8E\]\/75 {
   color: rgb(212 188 142 / 0.75);
+}
+.text-\[\#D4BC8E\]\/85 {
+  color: rgb(212 188 142 / 0.85);
 }
 .text-\[\#D4BC8E\]\/90 {
   color: rgb(212 188 142 / 0.9);

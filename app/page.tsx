@@ -6,7 +6,34 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 
 type PathPoint = { lat: number; lng: number };
 
+type AnimalSighting = { name: string; lat: number; lng: number; time: string };
+
 const PATH_STORAGE_KEY = "mission-map-path";
+
+function detectedAnimalName(val: unknown): string | null {
+  if (val == null || val === "") return null;
+  if (typeof val === "string") {
+    const t = val.trim();
+    return t.length > 0 ? t : null;
+  }
+  if (typeof val === "object" && val !== null && "name" in val) {
+    const n = (val as { name: unknown }).name;
+    if (typeof n === "string" && n.trim()) return n.trim();
+  }
+  const s = String(val).trim();
+  return s.length > 0 ? s : null;
+}
+
+function computeMapBounds(path: PathPoint[], sightings: AnimalSighting[]) {
+  const pts: PathPoint[] = [...path];
+  for (const s of sightings) {
+    if (Number.isFinite(s.lat) && Number.isFinite(s.lng)) {
+      pts.push({ lat: s.lat, lng: s.lng });
+    }
+  }
+  if (pts.length === 0) return null;
+  return computeBounds(pts);
+}
 
 function haversineMeters(a: PathPoint, b: PathPoint): number {
   const R = 6371000;
@@ -97,7 +124,13 @@ function gpsToCanvasPixels(
   return [x, y];
 }
 
-function MissionMapCanvas({ path }: { path: PathPoint[] }) {
+function MissionMapCanvas({
+  path,
+  sightings,
+}: {
+  path: PathPoint[];
+  sightings: AnimalSighting[];
+}) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -153,45 +186,70 @@ function MissionMapCanvas({ path }: { path: PathPoint[] }) {
       ctx.stroke();
     }
 
-    if (path.length < 2) return;
-
-    const bounds = computeBounds(path);
+    const bounds = computeMapBounds(path, sightings);
     if (!bounds) return;
 
     const padding = 20;
     const lineWidth = 3;
 
-    ctx.strokeStyle = "#E85D04";
-    ctx.lineWidth = lineWidth;
-    ctx.lineJoin = "round";
-    ctx.lineCap = "round";
-    ctx.shadowColor = "rgba(245, 211, 0, 0.75)";
-    ctx.shadowBlur = 14;
+    if (path.length >= 2) {
+      ctx.strokeStyle = "#E85D04";
+      ctx.lineWidth = lineWidth;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.shadowColor = "rgba(245, 211, 0, 0.75)";
+      ctx.shadowBlur = 14;
 
-    ctx.beginPath();
-    const [x0, y0] = gpsToCanvasPixels(
-      path[0].lat,
-      path[0].lng,
-      bounds,
-      cssW,
-      cssH,
-      padding,
-    );
-    ctx.moveTo(x0, y0);
-    for (let i = 1; i < path.length; i++) {
-      const [x, y] = gpsToCanvasPixels(
-        path[i].lat,
-        path[i].lng,
+      ctx.beginPath();
+      const [x0, y0] = gpsToCanvasPixels(
+        path[0].lat,
+        path[0].lng,
         bounds,
         cssW,
         cssH,
         padding,
       );
-      ctx.lineTo(x, y);
+      ctx.moveTo(x0, y0);
+      for (let i = 1; i < path.length; i++) {
+        const [x, y] = gpsToCanvasPixels(
+          path[i].lat,
+          path[i].lng,
+          bounds,
+          cssW,
+          cssH,
+          padding,
+        );
+        ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
     }
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-  }, [path]);
+
+    for (const s of sightings) {
+      if (!Number.isFinite(s.lat) || !Number.isFinite(s.lng)) continue;
+      const [sx, sy] = gpsToCanvasPixels(s.lat, s.lng, bounds, cssW, cssH, padding);
+      ctx.beginPath();
+      ctx.arc(sx, sy, 7, 0, Math.PI * 2);
+      ctx.fillStyle = "#F0D78C";
+      ctx.strokeStyle = "#E85D04";
+      ctx.lineWidth = 2;
+      ctx.shadowColor = "rgba(245, 211, 0, 0.55)";
+      ctx.shadowBlur = 10;
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      const label = s.name.length <= 6 ? s.name : `${s.name.slice(0, 10)}…`;
+      ctx.font = "600 12px system-ui, Segoe UI Emoji, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "bottom";
+      ctx.fillStyle = "#F5EEDC";
+      ctx.strokeStyle = "rgba(0,0,0,0.65)";
+      ctx.lineWidth = 3;
+      ctx.strokeText(label, sx, sy - 11);
+      ctx.fillText(label, sx, sy - 11);
+    }
+  }, [path, sightings]);
 
   useEffect(() => {
     draw();
@@ -230,6 +288,8 @@ export default function Home() {
   const [elapsedTime, setElapsedTime] = useState(0);
   const [suppressMissionModal, setSuppressMissionModal] = useState(false);
   const [missionTimerFrozen, setMissionTimerFrozen] = useState(false);
+  const [sightings, setSightings] = useState<AnimalSighting[]>([]);
+  const lastDetectedAnimalRef = useRef<string | null>(null);
 
   useLayoutEffect(() => {
     try {
@@ -319,6 +379,21 @@ export default function Home() {
         setPath((prev) => [...prev, { lat: latNum, lng: lngNum }]);
       }
 
+      const animalName = detectedAnimalName(data.detectedAnimal);
+      if (
+        animalName != null &&
+        animalName !== lastDetectedAnimalRef.current &&
+        Number.isFinite(latNum) &&
+        Number.isFinite(lngNum)
+      ) {
+        lastDetectedAnimalRef.current = animalName;
+        const ts = new Date().toISOString();
+        setSightings((prev) => [
+          ...prev,
+          { name: animalName, lat: latNum, lng: lngNum, time: ts },
+        ]);
+      }
+
       const reached =
         data.checkpoint === true ||
         data.rfidReached === true ||
@@ -377,6 +452,7 @@ export default function Home() {
       totalDistanceMeters: totalDistanceM,
       averageSpeedMetersPerSecond: averageSpeedMps,
       pathPointCount: path.length,
+      animalSightings: sightings,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], {
       type: "application/json",
@@ -387,13 +463,15 @@ export default function Home() {
     a.download = `safari-mission-report-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [elapsedTime, totalDistanceM, averageSpeedMps, path.length]);
+  }, [elapsedTime, totalDistanceM, averageSpeedMps, path.length, sightings]);
 
   const resetForNewRun = useCallback(() => {
     setSuppressMissionModal(true);
     setMissionTimerFrozen(false);
     setStartTime(null);
     setElapsedTime(0);
+    lastDetectedAnimalRef.current = null;
+    setSightings([]);
     clearPath();
   }, [clearPath]);
 
@@ -573,10 +651,15 @@ export default function Home() {
               Clear Path
             </button>
           </div>
-          <MissionMapCanvas path={path} />
-          {path.length < 2 && (
+          <MissionMapCanvas path={path} sightings={sightings} />
+          {path.length < 2 && sightings.length === 0 && (
             <p className="mt-3 text-center font-mono text-xs text-[#D4BC8E]/65">
               Trail appears after at least two GPS samples. Points: {path.length}
+            </p>
+          )}
+          {path.length < 2 && sightings.length > 0 && (
+            <p className="mt-3 text-center font-mono text-xs text-[#D4BC8E]/65">
+              Animal markers shown; breadcrumb trail needs two GPS samples. Points: {path.length}
             </p>
           )}
         </section>
@@ -629,6 +712,32 @@ export default function Home() {
                 </dd>
               </div>
             </dl>
+
+            <div className="mt-8 border-t border-[#D4BC8E]/35 pt-6">
+              <h3 className="mb-4 font-mono text-[10px] font-semibold uppercase tracking-[0.25em] text-[#F5EEDC]/80">
+                Animal log
+              </h3>
+              {sightings.length === 0 ? (
+                <p className="font-mono text-sm text-[#D4BC8E]/70">No animals logged this run.</p>
+              ) : (
+                <ul className="max-h-48 space-y-3 overflow-y-auto pr-1">
+                  {sightings.map((s, i) => (
+                    <li
+                      key={`${s.time}-${i}`}
+                      className="rounded-lg border border-[#D4BC8E]/25 bg-black/20 px-3 py-2"
+                    >
+                      <p className="font-mono text-sm font-semibold text-[#F5EEDC]">{s.name}</p>
+                      <p className="mt-1 font-mono text-[11px] text-[#D4BC8E]/85">
+                        {new Date(s.time).toLocaleString()}
+                      </p>
+                      <p className="font-mono text-[11px] tabular-nums text-[#F0D78C]">
+                        {s.lat.toFixed(4)}, {s.lng.toFixed(4)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <button
