@@ -845,6 +845,9 @@ video {
   --tw-numeric-spacing: tabular-nums;
   font-variant-numeric: var(--tw-ordinal) var(--tw-slashed-zero) var(--tw-numeric-figure) var(--tw-numeric-spacing) var(--tw-numeric-fraction);
 }
+.tracking-\[0\.15em\] {
+  letter-spacing: 0.15em;
+}
 .tracking-\[0\.25em\] {
   letter-spacing: 0.25em;
 }
@@ -869,6 +872,10 @@ video {
 .text-\[\#2A1F16\] {
   --tw-text-opacity: 1;
   color: rgb(42 31 22 / var(--tw-text-opacity, 1));
+}
+.text-\[\#D4BC8E\] {
+  --tw-text-opacity: 1;
+  color: rgb(212 188 142 / var(--tw-text-opacity, 1));
 }
 .text-\[\#D4BC8E\]\/50 {
   color: rgb(212 188 142 / 0.5);

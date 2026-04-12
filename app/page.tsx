@@ -284,12 +284,18 @@ export default function Home() {
   const [rfidLabel, setRfidLabel] = useState<"Searching..." | "Checkpoint Reached">(
     "Searching...",
   );
-  const [startTime, setStartTime] = useState<number | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [suppressMissionModal, setSuppressMissionModal] = useState(false);
   const [missionTimerFrozen, setMissionTimerFrozen] = useState(false);
   const [sightings, setSightings] = useState<AnimalSighting[]>([]);
   const lastDetectedAnimalRef = useRef<string | null>(null);
+  const [isMoving, setIsMoving] = useState(false);
+  const [rfidReached, setRfidReached] = useState(false);
+  const [canRecordPath, setCanRecordPath] = useState(false);
+  const pathGateRef = useRef(false);
+  const elapsedBaseRef = useRef(0);
+  const tickStartRef = useRef<number | null>(null);
+  const prevIsMovingRef = useRef(false);
 
   useLayoutEffect(() => {
     try {
@@ -331,26 +337,65 @@ export default function Home() {
   }, [path, storageReady]);
 
   useEffect(() => {
-    if (rfidLabel === "Searching...") {
+    if (rfidLabel === "Searching..." && !rfidReached) {
       setSuppressMissionModal(false);
     }
-  }, [rfidLabel]);
+  }, [rfidLabel, rfidReached]);
 
   useEffect(() => {
-    if (rfidLabel === "Checkpoint Reached") {
+    if (rfidReached || rfidLabel === "Checkpoint Reached") {
       setMissionTimerFrozen(true);
     }
-  }, [rfidLabel]);
+  }, [rfidReached, rfidLabel]);
 
   useEffect(() => {
-    const open = rfidLabel === "Checkpoint Reached" && !suppressMissionModal;
+    if (!missionTimerFrozen) return;
+    if (tickStartRef.current != null) {
+      elapsedBaseRef.current += Date.now() - tickStartRef.current;
+      tickStartRef.current = null;
+    }
+    setElapsedTime(elapsedBaseRef.current);
+  }, [missionTimerFrozen]);
+
+  useEffect(() => {
+    if (missionTimerFrozen) {
+      prevIsMovingRef.current = isMoving;
+      return;
+    }
+    if (isMoving && !prevIsMovingRef.current) {
+      tickStartRef.current = Date.now();
+    } else if (!isMoving && prevIsMovingRef.current) {
+      if (tickStartRef.current != null) {
+        elapsedBaseRef.current += Date.now() - tickStartRef.current;
+        tickStartRef.current = null;
+        setElapsedTime(elapsedBaseRef.current);
+      }
+    }
+    prevIsMovingRef.current = isMoving;
+  }, [isMoving, missionTimerFrozen]);
+
+  useEffect(() => {
+    if (missionTimerFrozen) return;
+    if (!isMoving) return;
+    const id = window.setInterval(() => {
+      const tick = tickStartRef.current;
+      const base = elapsedBaseRef.current;
+      const v = tick != null ? base + (Date.now() - tick) : base;
+      setElapsedTime(v);
+    }, 10);
+    return () => window.clearInterval(id);
+  }, [isMoving, missionTimerFrozen]);
+
+  useEffect(() => {
+    const open =
+      (rfidReached || rfidLabel === "Checkpoint Reached") && !suppressMissionModal;
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [rfidLabel, suppressMissionModal]);
+  }, [rfidLabel, rfidReached, suppressMissionModal]);
 
   useEffect(() => {
     if (!storageReady) return;
@@ -367,20 +412,39 @@ export default function Home() {
 
       if (!data || typeof data !== "object") {
         setRfidLabel("Searching...");
+        setIsMoving(false);
+        setRfidReached(false);
         return;
       }
+
+      setIsMoving(data.isMoving === true);
+      setRfidReached(data.rfidReached === true);
 
       const latNum = data.lat != null ? Number(data.lat) : NaN;
       const lngNum = data.lng != null ? Number(data.lng) : NaN;
 
+      if (data.isMoving === true && !pathGateRef.current) {
+        pathGateRef.current = true;
+        setCanRecordPath(true);
+        setPath([]);
+        try {
+          sessionStorage.removeItem(PATH_STORAGE_KEY);
+        } catch {
+          /* ignore */
+        }
+      }
+
       if (Number.isFinite(latNum) && Number.isFinite(lngNum)) {
         setLat(latNum.toFixed(4));
         setLng(lngNum.toFixed(4));
-        setPath((prev) => [...prev, { lat: latNum, lng: lngNum }]);
+        if (pathGateRef.current) {
+          setPath((prev) => [...prev, { lat: latNum, lng: lngNum }]);
+        }
       }
 
       const animalName = detectedAnimalName(data.detectedAnimal);
       if (
+        pathGateRef.current &&
         animalName != null &&
         animalName !== lastDetectedAnimalRef.current &&
         Number.isFinite(latNum) &&
@@ -420,27 +484,6 @@ export default function Home() {
 
   const dataLive = firebaseConnected && botStreamActive;
 
-  useEffect(() => {
-    if (dataLive && startTime === null) {
-      setStartTime(Date.now());
-    }
-  }, [dataLive, startTime]);
-
-  useEffect(() => {
-    if (startTime === null) return;
-
-    if (missionTimerFrozen) {
-      setElapsedTime(Date.now() - startTime);
-      return;
-    }
-
-    const id = window.setInterval(() => {
-      setElapsedTime(Date.now() - startTime);
-    }, 10);
-
-    return () => window.clearInterval(id);
-  }, [startTime, missionTimerFrozen]);
-
   const totalDistanceM = totalPathDistanceMeters(path);
   const elapsedSeconds = elapsedTime / 1000;
   const averageSpeedMps = elapsedSeconds > 0 ? totalDistanceM / elapsedSeconds : 0;
@@ -468,14 +511,25 @@ export default function Home() {
   const resetForNewRun = useCallback(() => {
     setSuppressMissionModal(true);
     setMissionTimerFrozen(false);
-    setStartTime(null);
+    elapsedBaseRef.current = 0;
+    tickStartRef.current = null;
+    prevIsMovingRef.current = false;
     setElapsedTime(0);
     lastDetectedAnimalRef.current = null;
     setSightings([]);
+    setIsMoving(false);
+    setRfidReached(false);
+    pathGateRef.current = false;
+    setCanRecordPath(false);
     clearPath();
   }, [clearPath]);
 
-  const showMissionModal = rfidLabel === "Checkpoint Reached" && !suppressMissionModal;
+  const missionComplete = rfidReached || rfidLabel === "Checkpoint Reached";
+  const showMissionModal = missionComplete && !suppressMissionModal;
+  const mapPath = canRecordPath ? path : [];
+  const mapSightings = canRecordPath ? sightings : [];
+  const timerStandby =
+    !missionTimerFrozen && !isMoving && rfidLabel === "Searching...";
 
   return (
     <main className="relative min-h-screen overflow-x-hidden px-6 py-12 text-[#F5EEDC]">
@@ -562,17 +616,28 @@ export default function Home() {
               <h2 className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#F5EEDC]/80">
                 Lap timer
               </h2>
-              <p
-                className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-[#F0D78C] sm:text-3xl"
-                style={{
-                  textShadow:
-                    "0 0 20px rgba(232, 163, 23, 0.55), 0 0 40px rgba(240, 215, 140, 0.25), 0 0 2px rgba(245, 238, 220, 0.5)",
-                }}
-              >
-                {formatMissionClock(elapsedTime)}
-              </p>
+              {timerStandby ? (
+                <p
+                  className="font-mono text-lg font-semibold uppercase tracking-[0.15em] text-[#D4BC8E] sm:text-xl"
+                  style={{
+                    textShadow: "0 0 12px rgba(212, 188, 142, 0.35)",
+                  }}
+                >
+                  SYSTEM STANDBY
+                </p>
+              ) : (
+                <p
+                  className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-[#F0D78C] sm:text-3xl"
+                  style={{
+                    textShadow:
+                      "0 0 20px rgba(232, 163, 23, 0.55), 0 0 40px rgba(240, 215, 140, 0.25), 0 0 2px rgba(245, 238, 220, 0.5)",
+                  }}
+                >
+                  {formatMissionClock(elapsedTime)}
+                </p>
+              )}
               <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-[#D4BC8E]/70">
-                Min : Sec : Cs
+                {timerStandby ? "Awaiting isMoving" : "Min : Sec : Cs"}
               </p>
             </div>
           </div>
@@ -651,15 +716,20 @@ export default function Home() {
               Clear Path
             </button>
           </div>
-          <MissionMapCanvas path={path} sightings={sightings} />
-          {path.length < 2 && sightings.length === 0 && (
+          <MissionMapCanvas path={mapPath} sightings={mapSightings} />
+          {!canRecordPath && (
             <p className="mt-3 text-center font-mono text-xs text-[#D4BC8E]/65">
-              Trail appears after at least two GPS samples. Points: {path.length}
+              Map trace unlocks when isMoving is true. GPS still updates above.
             </p>
           )}
-          {path.length < 2 && sightings.length > 0 && (
+          {canRecordPath && mapPath.length < 2 && mapSightings.length === 0 && (
             <p className="mt-3 text-center font-mono text-xs text-[#D4BC8E]/65">
-              Animal markers shown; breadcrumb trail needs two GPS samples. Points: {path.length}
+              Trail appears after at least two GPS samples. Points: {mapPath.length}
+            </p>
+          )}
+          {canRecordPath && mapPath.length < 2 && mapSightings.length > 0 && (
+            <p className="mt-3 text-center font-mono text-xs text-[#D4BC8E]/65">
+              Animal markers shown; breadcrumb trail needs two GPS samples. Points: {mapPath.length}
             </p>
           )}
         </section>
