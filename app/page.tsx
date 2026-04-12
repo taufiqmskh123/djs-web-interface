@@ -120,8 +120,38 @@ function MissionMapCanvas({ path }: { path: PathPoint[] }) {
     if (!ctx) return;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = "rgb(15 23 42)";
+
+    const bgGrad = ctx.createLinearGradient(0, 0, cssW, cssH);
+    bgGrad.addColorStop(0, "#1e2d22");
+    bgGrad.addColorStop(0.4, "#152019");
+    bgGrad.addColorStop(1, "#0c140e");
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, cssW, cssH);
+
+    ctx.strokeStyle = "rgba(212, 188, 142, 0.07)";
+    ctx.lineWidth = 1;
+    ctx.shadowBlur = 0;
+    for (let i = 0; i < 9; i++) {
+      ctx.beginPath();
+      const baseY = (cssH / 10) * (i + 0.5);
+      for (let x = 0; x <= cssW; x += 16) {
+        const w = Math.sin(x * 0.018 + i * 0.7) * 5 + Math.sin(x * 0.035) * 2;
+        if (x === 0) ctx.moveTo(x, baseY + w);
+        else ctx.lineTo(x, baseY + w);
+      }
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "rgba(100, 120, 95, 0.12)";
+    for (let j = 0; j < 6; j++) {
+      ctx.beginPath();
+      const baseX = (cssW / 7) * (j + 0.5);
+      for (let y = 0; y <= cssH; y += 14) {
+        const w = Math.sin(y * 0.022 + j * 0.5) * 4;
+        if (y === 0) ctx.moveTo(baseX + w, y);
+        else ctx.lineTo(baseX + w, y);
+      }
+      ctx.stroke();
+    }
 
     if (path.length < 2) return;
 
@@ -131,12 +161,12 @@ function MissionMapCanvas({ path }: { path: PathPoint[] }) {
     const padding = 20;
     const lineWidth = 3;
 
-    ctx.strokeStyle = "rgb(16 185 129)";
+    ctx.strokeStyle = "#E85D04";
     ctx.lineWidth = lineWidth;
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
-    ctx.shadowColor = "rgba(16, 185, 129, 0.85)";
-    ctx.shadowBlur = 10;
+    ctx.shadowColor = "rgba(245, 211, 0, 0.75)";
+    ctx.shadowBlur = 14;
 
     ctx.beginPath();
     const [x0, y0] = gpsToCanvasPixels(
@@ -179,7 +209,7 @@ function MissionMapCanvas({ path }: { path: PathPoint[] }) {
   return (
     <div
       ref={wrapRef}
-      className="relative h-72 w-full overflow-hidden rounded-lg border border-slate-800 bg-slate-900"
+      className="relative h-72 w-full overflow-hidden rounded-2xl border border-[#D4BC8E] bg-[#2A1F16]/80 shadow-[0_10px_28px_rgba(0,0,0,0.5),0_3px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(245,238,220,0.08)]"
     >
       <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" aria-hidden />
     </div>
@@ -370,85 +400,140 @@ export default function Home() {
   const showMissionModal = rfidLabel === "Checkpoint Reached" && !suppressMissionModal;
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-12 text-slate-100">
-      <div className="mx-auto flex max-w-2xl flex-col gap-10">
-        <header className="flex flex-col gap-4 border-b border-slate-800 pb-8">
-          <h1 className="text-sm font-medium uppercase tracking-[0.2em] text-slate-500">
-            Bot telemetry
-          </h1>
+    <main className="relative min-h-screen overflow-x-hidden px-6 py-12 text-[#F5EEDC]">
+      <div aria-hidden className="pointer-events-none fixed inset-0 z-0 bg-[#1B2613]" />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.4]"
+        style={{
+          backgroundImage: `
+            repeating-linear-gradient(
+              0deg,
+              transparent,
+              transparent 3px,
+              rgba(0, 0, 0, 0.045) 3px,
+              rgba(0, 0, 0, 0.045) 4px
+            ),
+            repeating-linear-gradient(
+              90deg,
+              transparent,
+              transparent 3px,
+              rgba(0, 0, 0, 0.035) 3px,
+              rgba(0, 0, 0, 0.035) 4px
+            ),
+            repeating-linear-gradient(
+              45deg,
+              transparent,
+              transparent 6px,
+              rgba(245, 238, 220, 0.025) 6px,
+              rgba(245, 238, 220, 0.025) 7px
+            ),
+            repeating-linear-gradient(
+              -45deg,
+              transparent,
+              transparent 8px,
+              rgba(0, 0, 0, 0.03) 8px,
+              rgba(0, 0, 0, 0.03) 9px
+            )
+          `,
+        }}
+      />
+
+      <div className="relative z-10 mx-auto flex max-w-2xl flex-col gap-10">
+        <header className="rounded-2xl border border-[#D4BC8E] bg-[#2A1F16]/80 px-5 py-6 shadow-[0_12px_32px_rgba(0,0,0,0.45),0_4px_12px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(245,238,220,0.12)] backdrop-blur-sm">
+          <div className="mb-5 flex flex-col gap-3 border-b border-[#D4BC8E]/40 pb-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-xs text-[#D4BC8E]/90">┌</span>
+              <h1
+                className="font-mono text-lg font-bold uppercase tracking-[0.28em] text-[#F5EEDC] sm:text-xl"
+                style={{
+                  textShadow: "0 0 24px rgba(245, 238, 220, 0.15), 0 1px 0 rgba(0,0,0,0.4)",
+                }}
+              >
+                Wild Horizon
+              </h1>
+              <span className="font-mono text-xs text-[#D4BC8E]/90">┐</span>
+            </div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.35em] text-[#D4BC8E]/75">
+              Field // Research
+            </p>
+          </div>
+
           <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
+              <h2 className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#F5EEDC]/80">
                 Connection status
               </h2>
               <div className="flex items-center gap-3">
                 <span
                   className={`relative flex h-3.5 w-3.5 rounded-full ${
-                    dataLive ? "bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.9)]" : "bg-slate-600"
+                    dataLive
+                      ? "bg-[#E8A317] shadow-[0_0_14px_rgba(232,163,23,0.85)]"
+                      : "bg-[#3d342c]"
                   } ${dataLive ? "animate-pulse" : ""}`}
                   aria-hidden
                 />
-                <span className="text-sm text-slate-400">
-                  <span className={dataLive ? "text-emerald-400" : "text-slate-500"}>
+                <span className="text-sm text-[#F5EEDC]/65">
+                  <span className={dataLive ? "font-mono text-[#F0D78C]" : "font-mono text-[#D4BC8E]/50"}>
                     {dataLive ? "Data active" : firebaseConnected ? "Connected — waiting for /bot" : "Disconnected"}
                   </span>
                 </span>
               </div>
             </div>
             <div className="sm:text-right">
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
+              <h2 className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#F5EEDC]/80">
                 Lap timer
               </h2>
               <p
-                className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-emerald-500 sm:text-3xl"
+                className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-[#F0D78C] sm:text-3xl"
                 style={{
                   textShadow:
-                    "0 0 16px rgba(16, 185, 129, 0.75), 0 0 32px rgba(16, 185, 129, 0.3)",
+                    "0 0 20px rgba(232, 163, 23, 0.55), 0 0 40px rgba(240, 215, 140, 0.25), 0 0 2px rgba(245, 238, 220, 0.5)",
                 }}
               >
                 {formatMissionClock(elapsedTime)}
               </p>
-              <p className="mt-1 text-[10px] uppercase tracking-wider text-slate-600">Min : Sec : Cs</p>
+              <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-[#D4BC8E]/70">
+                Min : Sec : Cs
+              </p>
             </div>
           </div>
         </header>
 
-        <section className="grid gap-10 sm:grid-cols-2">
-          <div>
+        <section className="grid gap-6 sm:grid-cols-2">
+          <div className="rounded-2xl border border-[#D4BC8E] bg-[#2A1F16]/80 p-6 shadow-[0_10px_28px_rgba(0,0,0,0.5),0_3px_10px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(245,238,220,0.06)] backdrop-blur-sm">
             <p
-              className="mb-3 text-3xl font-bold tracking-tight text-emerald-500 sm:text-4xl"
+              className="mb-3 font-mono text-sm font-bold uppercase tracking-[0.2em] text-[#F5EEDC] sm:text-base"
               style={{
-                textShadow:
-                  "0 0 20px rgba(16, 185, 129, 0.85), 0 0 40px rgba(16, 185, 129, 0.35)",
+                textShadow: "0 1px 2px rgba(0,0,0,0.45)",
               }}
             >
               LATITUDE
             </p>
             <p
-              className="text-4xl font-semibold tabular-nums text-emerald-500 sm:text-5xl"
+              className="font-mono text-3xl font-semibold tabular-nums text-[#F0D78C] sm:text-4xl"
               style={{
                 textShadow:
-                  "0 0 20px rgba(16, 185, 129, 0.85), 0 0 40px rgba(16, 185, 129, 0.35)",
+                  "0 0 22px rgba(232, 163, 23, 0.5), 0 0 44px rgba(240, 215, 140, 0.2), 0 0 2px rgba(245, 238, 220, 0.45)",
               }}
             >
               {lat}
             </p>
           </div>
-          <div>
+          <div className="rounded-2xl border border-[#D4BC8E] bg-[#2A1F16]/80 p-6 shadow-[0_10px_28px_rgba(0,0,0,0.5),0_3px_10px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(245,238,220,0.06)] backdrop-blur-sm">
             <p
-              className="mb-3 text-3xl font-bold tracking-tight text-emerald-500 sm:text-4xl"
+              className="mb-3 font-mono text-sm font-bold uppercase tracking-[0.2em] text-[#F5EEDC] sm:text-base"
               style={{
-                textShadow:
-                  "0 0 20px rgba(16, 185, 129, 0.85), 0 0 40px rgba(16, 185, 129, 0.35)",
+                textShadow: "0 1px 2px rgba(0,0,0,0.45)",
               }}
             >
               LONGITUDE
             </p>
             <p
-              className="text-4xl font-semibold tabular-nums text-emerald-500 sm:text-5xl"
+              className="font-mono text-3xl font-semibold tabular-nums text-[#F0D78C] sm:text-4xl"
               style={{
                 textShadow:
-                  "0 0 20px rgba(16, 185, 129, 0.85), 0 0 40px rgba(16, 185, 129, 0.35)",
+                  "0 0 22px rgba(232, 163, 23, 0.5), 0 0 44px rgba(240, 215, 140, 0.2), 0 0 2px rgba(245, 238, 220, 0.45)",
               }}
             >
               {lng}
@@ -456,35 +541,41 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">
+        <section className="rounded-2xl border border-[#D4BC8E] bg-[#2A1F16]/80 p-6 shadow-[0_10px_28px_rgba(0,0,0,0.5),0_3px_10px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(245,238,220,0.06)] backdrop-blur-sm">
+          <h2 className="mb-3 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#F5EEDC]/80">
             RFID Status
           </h2>
           <p
-            className={`text-xl font-medium ${
-              rfidLabel === "Checkpoint Reached" ? "text-emerald-400" : "text-amber-400/90"
+            className={`font-mono text-lg font-medium tracking-tight ${
+              rfidLabel === "Checkpoint Reached" ? "text-[#F0D78C]" : "text-[#E8A317]"
             }`}
+            style={{
+              textShadow:
+                rfidLabel === "Checkpoint Reached"
+                  ? "0 0 14px rgba(240, 215, 140, 0.45), 0 0 2px rgba(245, 238, 220, 0.35)"
+                  : "0 0 12px rgba(232, 163, 23, 0.35)",
+            }}
           >
             {rfidLabel}
           </p>
         </section>
 
-        <section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
+        <section className="rounded-2xl border border-[#D4BC8E] bg-[#2A1F16]/80 p-6 shadow-[0_10px_28px_rgba(0,0,0,0.5),0_3px_10px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(245,238,220,0.06)] backdrop-blur-sm">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+            <h2 className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#F5EEDC]/80">
               Mission Map
             </h2>
             <button
               type="button"
               onClick={clearPath}
-              className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:border-emerald-600/50 hover:bg-slate-700 hover:text-emerald-200"
+              className="rounded-md border border-[#7a6b58] bg-gradient-to-b from-[#d4c4ae] to-[#a8987a] px-3 py-1.5 font-mono text-xs font-semibold uppercase tracking-wide text-[#2A1F16] shadow-[0_3px_0_#6b5d4c,0_6px_12px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.35)] transition active:translate-y-px active:shadow-[0_2px_0_#6b5d4c,0_4px_8px_rgba(0,0,0,0.3)] hover:from-[#dcccb6] hover:to-[#b0a088]"
             >
               Clear Path
             </button>
           </div>
           <MissionMapCanvas path={path} />
           {path.length < 2 && (
-            <p className="mt-3 text-center text-xs text-slate-500">
+            <p className="mt-3 text-center font-mono text-xs text-[#D4BC8E]/65">
               Trail appears after at least two GPS samples. Points: {path.length}
             </p>
           )}
@@ -493,43 +584,47 @@ export default function Home() {
 
       {showMissionModal ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-md"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#1B2613]/85 p-4 backdrop-blur-md"
           role="dialog"
           aria-modal="true"
           aria-labelledby="mission-modal-title"
         >
-          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-slate-800 bg-slate-950/95 p-8 shadow-[0_0_40px_rgba(16,185,129,0.12)]">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-[#D4BC8E] bg-[#2A1F16]/90 p-8 shadow-[0_14px_40px_rgba(0,0,0,0.55),0_4px_14px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(245,238,220,0.1)] backdrop-blur-md">
             <h2
               id="mission-modal-title"
-              className="mb-6 text-center text-xl font-bold uppercase tracking-wide text-emerald-500 sm:text-2xl"
+              className="mb-6 text-center font-mono text-lg font-bold uppercase tracking-[0.2em] text-[#F5EEDC] sm:text-xl"
               style={{
-                textShadow:
-                  "0 0 18px rgba(16, 185, 129, 0.85), 0 0 36px rgba(16, 185, 129, 0.35)",
+                textShadow: "0 0 20px rgba(245, 238, 220, 0.12), 0 2px 4px rgba(0,0,0,0.4)",
               }}
             >
               SAFARI MISSION COMPLETE
             </h2>
 
-            <dl className="space-y-4 border-y border-slate-800 py-6">
+            <dl className="space-y-4 border-y border-[#D4BC8E]/35 py-6">
               <div className="flex flex-col gap-1">
-                <dt className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                <dt className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#F5EEDC]/75">
                   Total time
                 </dt>
-                <dd className="font-mono text-lg tabular-nums text-emerald-400">
+                <dd
+                  className="font-mono text-lg tabular-nums text-[#F0D78C]"
+                  style={{
+                    textShadow: "0 0 16px rgba(232, 163, 23, 0.4)",
+                  }}
+                >
                   {formatMissionClock(elapsedTime)}
                 </dd>
               </div>
               <div className="flex flex-col gap-1">
-                <dt className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                <dt className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#F5EEDC]/75">
                   Total distance
                 </dt>
-                <dd className="text-lg text-slate-100">{totalDistanceM.toFixed(2)} m</dd>
+                <dd className="font-mono text-lg text-[#F5EEDC]">{totalDistanceM.toFixed(2)} m</dd>
               </div>
               <div className="flex flex-col gap-1">
-                <dt className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                <dt className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#F5EEDC]/75">
                   Average speed
                 </dt>
-                <dd className="text-lg text-slate-100">
+                <dd className="font-mono text-lg text-[#F5EEDC]">
                   {elapsedSeconds > 0 ? `${averageSpeedMps.toFixed(3)} m/s` : "—"}
                 </dd>
               </div>
@@ -539,14 +634,14 @@ export default function Home() {
               <button
                 type="button"
                 onClick={downloadReport}
-                className="flex-1 rounded-lg border border-emerald-600/50 bg-emerald-950/40 px-4 py-2.5 text-sm font-medium text-emerald-300 transition hover:border-emerald-500 hover:bg-emerald-900/30 hover:text-emerald-200"
+                className="flex-1 rounded-md border border-[#7a6b58] bg-gradient-to-b from-[#d4c4ae] to-[#a8987a] px-4 py-2.5 font-mono text-sm font-semibold text-[#2A1F16] shadow-[0_3px_0_#6b5d4c,0_8px_16px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.35)] transition active:translate-y-px active:shadow-[0_2px_0_#6b5d4c] hover:from-[#dcccb6] hover:to-[#b0a088]"
               >
                 Download report
               </button>
               <button
                 type="button"
                 onClick={resetForNewRun}
-                className="flex-1 rounded-lg border border-slate-600 bg-slate-800 px-4 py-2.5 text-sm font-medium text-slate-200 transition hover:border-slate-500 hover:bg-slate-700"
+                className="flex-1 rounded-md border border-[#8a7a68] bg-gradient-to-b from-[#c4b49e] to-[#988878] px-4 py-2.5 font-mono text-sm font-semibold text-[#2A1F16] shadow-[0_3px_0_#5c5044,0_8px_16px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.3)] transition active:translate-y-px active:shadow-[0_2px_0_#5c5044] hover:from-[#cec0aa] hover:to-[#a09080]"
               >
                 Reset for new run
               </button>
