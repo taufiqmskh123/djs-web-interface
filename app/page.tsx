@@ -489,24 +489,70 @@ export default function Home() {
   const averageSpeedMps = elapsedSeconds > 0 ? totalDistanceM / elapsedSeconds : 0;
 
   const downloadReport = useCallback(() => {
-    const payload = {
-      completedAt: new Date().toISOString(),
-      totalTimeMs: elapsedTime,
-      totalDistanceMeters: totalDistanceM,
-      averageSpeedMetersPerSecond: averageSpeedMps,
-      pathPointCount: path.length,
-      animalSightings: sightings,
+    const formatAnimalCell = (name: string) => {
+      const t = name.trim();
+      const cp = t.codePointAt(0);
+      const looksEmoji =
+        cp != null &&
+        (cp >= 0x1f300 ||
+          (cp >= 0x2600 && cp <= 0x27bf) ||
+          (cp >= 0x1f600 && cp <= 0x1f64f) ||
+          (cp >= 0x1f900 && cp <= 0x1f9ff));
+      return looksEmoji ? t : `🐾 ${t}`;
     };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], {
-      type: "application/json",
+
+    const missionCompleted = new Date().toLocaleString(undefined, {
+      dateStyle: "medium",
+      timeStyle: "medium",
     });
+    const durationStr = formatMissionClock(elapsedTime);
+    const speedStr =
+      elapsedSeconds > 0 ? `${averageSpeedMps.toFixed(3)} m/s` : "0.000 m/s";
+
+    const lines: string[] = [
+      "WILD HORIZON - MISSION SUMMARY REPORT",
+      "====================================",
+      "",
+      "Mission Metadata:",
+      "",
+      `Mission Completed: ${missionCompleted}`,
+      `Total Duration: ${durationStr}`,
+      `Total Distance: ${totalDistanceM.toFixed(2)} meters`,
+      `Avg Speed: ${speedStr}`,
+      "",
+      "WILDLIFE SIGHTINGS",
+      "",
+      "Time | Animal | Coordinates",
+      "-----|--------|-------------",
+    ];
+
+    if (sightings.length === 0) {
+      lines.push("(No wildlife logged)");
+    } else {
+      for (const s of sightings) {
+        const rowTime = new Date(s.time).toLocaleString(undefined, {
+          dateStyle: "short",
+          timeStyle: "medium",
+        });
+        lines.push(
+          `${rowTime} | ${formatAnimalCell(s.name)} | ${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}`,
+        );
+      }
+    }
+
+    lines.push("");
+    lines.push("END OF MISSION LOG");
+    lines.push(`Total path points recorded: ${path.length}`);
+
+    const text = lines.join("\n");
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `safari-mission-report-${Date.now()}.json`;
+    a.download = `wild-horizon-mission-report-${Date.now()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [elapsedTime, totalDistanceM, averageSpeedMps, path.length, sightings]);
+  }, [elapsedTime, totalDistanceM, averageSpeedMps, elapsedSeconds, path.length, sightings]);
 
   const resetForNewRun = useCallback(() => {
     setSuppressMissionModal(true);
