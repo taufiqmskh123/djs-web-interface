@@ -288,6 +288,8 @@ export default function Home() {
   const [suppressMissionModal, setSuppressMissionModal] = useState(false);
   const [missionTimerFrozen, setMissionTimerFrozen] = useState(false);
   const [sightings, setSightings] = useState<AnimalSighting[]>([]);
+  const [hasStarted, setHasStarted] = useState(false);
+  const [latestAnimal, setLatestAnimal] = useState<AnimalSighting | null>(null);
   const lastDetectedAnimalRef = useRef<string | null>(null);
   const [isMoving, setIsMoving] = useState(false);
   const [rfidReached, setRfidReached] = useState(false);
@@ -452,10 +454,9 @@ export default function Home() {
       ) {
         lastDetectedAnimalRef.current = animalName;
         const ts = new Date().toISOString();
-        setSightings((prev) => [
-          ...prev,
-          { name: animalName, lat: latNum, lng: lngNum, time: ts },
-        ]);
+        const newSighting = { name: animalName, lat: latNum, lng: lngNum, time: ts };
+        setSightings((prev) => [...prev, newSighting]);
+        setLatestAnimal(newSighting);
       }
 
       const reached =
@@ -576,6 +577,85 @@ export default function Home() {
   const mapSightings = canRecordPath ? sightings : [];
   const timerStandby =
     !missionTimerFrozen && !isMoving && rfidLabel === "Searching...";
+
+  if (!hasStarted) {
+    return (
+      <main className="relative min-h-screen w-full overflow-hidden flex items-center justify-center px-6 py-12" style={{ backgroundColor: "#1B2613" }}>
+        <div aria-hidden className="pointer-events-none fixed inset-0 z-0" style={{ backgroundColor: "#1B2613" }} />
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 z-0 opacity-30"
+          style={{
+            backgroundImage: `
+              repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 3px,
+                rgba(245, 238, 220, 0.05) 3px,
+                rgba(245, 238, 220, 0.05) 4px
+              ),
+              repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 3px,
+                rgba(245, 238, 220, 0.05) 3px,
+                rgba(245, 238, 220, 0.05) 4px
+              ),
+              repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 8px,
+                rgba(232, 163, 23, 0.08) 8px,
+                rgba(232, 163, 23, 0.08) 9px
+              )
+            `,
+          }}
+        />
+        <div className="relative z-10 flex flex-col items-center gap-8 text-center max-w-lg">
+          <div>
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <span className="font-mono text-lg" style={{ color: "#D4BC8E" }}>┌</span>
+              <h1
+                className="font-mono text-5xl font-bold uppercase tracking-[0.35em]"
+                style={{
+                  color: "#F5EEDC",
+                  textShadow: "0 0 40px rgba(232, 163, 23, 0.6), 0 0 80px rgba(240, 215, 140, 0.3), 0 2px 8px rgba(0,0,0,0.6)",
+                }}
+              >
+                Wild Horizon
+              </h1>
+              <span className="font-mono text-lg" style={{ color: "#D4BC8E" }}>┐</span>
+            </div>
+            <p className="font-mono text-sm uppercase tracking-[0.2em]" style={{ color: "#D4BC8E" }}>
+              Field Research // Exploration
+            </p>
+          </div>
+          <p className="font-mono text-base" style={{ color: "#F5EEDC", opacity: 0.8 }}>
+            Embark on a wildlife safari adventure. Track animals, map your path, and capture the mystery of nature.
+          </p>
+          <button
+            type="button"
+            onClick={() => setHasStarted(true)}
+            className="rounded-lg border-2 px-8 py-4 font-mono text-lg font-bold uppercase tracking-[0.15em] transition-all active:scale-95"
+            style={{
+              borderColor: "#E85D04",
+              color: "#F5EEDC",
+              backgroundColor: "rgba(232, 85, 4, 0.1)",
+              boxShadow: "0 0 20px rgba(232, 85, 4, 0.5), 0 0 40px rgba(245, 211, 0, 0.2), inset 0 1px 0 rgba(245, 238, 220, 0.2)",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 30px rgba(232, 85, 4, 0.7), 0 0 60px rgba(245, 211, 0, 0.35), inset 0 1px 0 rgba(245, 238, 220, 0.3)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 20px rgba(232, 85, 4, 0.5), 0 0 40px rgba(245, 211, 0, 0.2), inset 0 1px 0 rgba(245, 238, 220, 0.2)";
+            }}
+          >
+            START MISSION
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="relative min-h-screen overflow-x-hidden px-6 py-12 text-[#F5EEDC]">
@@ -747,6 +827,32 @@ export default function Home() {
           >
             {rfidLabel}
           </p>
+        </section>
+
+        <section className="rounded-2xl border border-[#D4BC8E] bg-[#2A1F16]/80 p-6 shadow-[0_10px_28px_rgba(0,0,0,0.5),0_3px_10px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(245,238,220,0.06)] backdrop-blur-sm">
+          <h2 className="mb-4 font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[#F5EEDC]/80">
+            Latest Sighting
+          </h2>
+          {latestAnimal ? (
+            <div
+              key={latestAnimal.name}
+              className="animate-pulse rounded-lg border border-[#D4BC8E]/40 bg-[#1a130e]/60 px-4 py-3"
+            >
+              <p className="font-mono text-sm font-semibold text-[#F5EEDC]">
+                {latestAnimal.name}
+              </p>
+              <p className="mt-2 font-mono text-[11px] text-[#D4BC8E]/75">
+                {new Date(latestAnimal.time).toLocaleString()}
+              </p>
+              <p className="font-mono text-[11px] tabular-nums text-[#F0D78C]">
+                {latestAnimal.lat.toFixed(4)}, {latestAnimal.lng.toFixed(4)}
+              </p>
+            </div>
+          ) : (
+            <p className="font-mono text-sm text-[#D4BC8E]/60">
+              No animals detected yet. Explore to find wildlife!
+            </p>
+          )}
         </section>
 
         <section className="rounded-2xl border border-[#D4BC8E] bg-[#2A1F16]/80 p-6 shadow-[0_10px_28px_rgba(0,0,0,0.5),0_3px_10px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(245,238,220,0.06)] backdrop-blur-sm">
